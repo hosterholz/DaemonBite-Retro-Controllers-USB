@@ -1,9 +1,9 @@
 /*  PSX Controller Decoder Library (Psx.h)
 	Written by: Kevin Ahrendt June 22nd, 2008
-	
+
 	Controller protocol implemented using Andrew J McCubbin's analysis.
 	http://www.gamesx.com/controldata/psxcont/psxcont.htm
-	
+
 	Shift command is based on tutorial examples for ShiftIn and ShiftOut
 	functions both written by Carlyn Maw and Tom Igoe
 	http://www.arduino.cc/en/Tutorial/ShiftIn
@@ -30,7 +30,7 @@
 #include "Arduino.h"
 
 // Button Hex Representations:
-#define psxLeft		0x0001 
+#define psxLeft		0x0001
 #define psxDown		0x0002
 #define psxRight	0x0004
 #define psxUp		0x0008
@@ -49,34 +49,28 @@
 
 class Psx
 {
-	public:
-		Psx();
-		void setupPins(byte , byte , byte , byte , byte );		// (Data Pin #, CMND Pin #, ATT Pin #, CLK Pin #, Delay)
-															// Delay is how long the clock goes without changing state
-															// in Microseconds. It can be lowered to increase response,
-															// but if it is too low it may cause glitches and have some
-															// keys spill over with false-positives. A regular PSX controller
-															// works fine at 50 uSeconds.
-															
-		unsigned int read();								// Returns the status of the button presses in an unsignd int.
-															// The value returned corresponds to each key as defined above.
-		
-	private:
-		byte shift(byte _dataOut);
+public:
+  Psx();
+  void setupPins(uint8_t dataPin, uint8_t cmndPin, uint8_t attPin, uint8_t clockPin, uint8_t delay,uint8_t n_controllers); // (Data Pin #, CMND Pin #, ATT Pin #, CLK Pin #, Delay)
+                                                                                                                           // Delay is how long the clock goes without changing state
+															   // in Microseconds. It can be lowered to increase response,
+															   // but if it is too low it may cause glitches and have some
+															   // keys spill over with false-positives. A regular PSX controller
+															   // works fine at 50 uSeconds.
 
-		byte _dataPin;
-		byte _cmndPin;
-		byte _attPin;
-		byte _clockPin;
-		
-		byte _delay;
-		byte _i;
-		boolean _temp;
-		byte _dataIn;
-		
-		byte _data1;
-		byte _data2;
-		unsigned int _dataOut;
+  void read(uint16_t* state);								// Returns the status of the button presses in an unsignd int.
+															// The value returned corresponds to each key as defined above.
+
+private:
+  void shift(uint8_t dataOut, uint8_t* dataIn);
+
+  uint8_t _dataPin;
+  uint8_t _cmndPin;
+  uint8_t _attPin;
+  uint8_t _clockPin;
+
+  uint8_t _delay;
+  uint8_t _n_controllers;
 };
 
 #endif

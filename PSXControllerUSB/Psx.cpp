@@ -1,9 +1,9 @@
 /*  PSX Controller Decoder Library (Psx.cpp)
 	Written by: Kevin Ahrendt June 22nd, 2008
-	
+
 	Controller protocol implemented using Andrew J McCubbin's analysis.
 	http://www.gamesx.com/controldata/psxcont/psxcont.htm
-	
+
 	Shift command is based on tutorial examples for ShiftIn and ShiftOut
 	functions both written by Carlyn Maw and Tom Igoe
 	http://www.arduino.cc/en/Tutorial/ShiftIn
@@ -28,70 +28,72 @@ Psx::Psx()
 {
 }
 
-byte Psx::shift(byte _dataOut)							// Does the actual shifting, both in and out simultaneously
+void Psx::shift(uint8_t dataOut, uint8_t* dataIn)      // Does the actual shifting, both in and out simultaneously
 {
-	_temp = 0;
-	_dataIn = 0;
+  for (uint8_t i = 0; i<8; ++i)
+    {
 
-	for (_i = 0; _i <= 7; _i++)
-	{
-		
-		
-		if ( _dataOut & (1 << _i) ) digitalWrite(_cmndPin, HIGH);	// Writes out the _dataOut bits
-		else digitalWrite(_cmndPin, LOW);
+      digitalWrite(_cmndPin,dataOut & 0x01);
+      dataOut>>=1;
+      digitalWrite(_clockPin, LOW);
 
-		digitalWrite(_clockPin, LOW);
-		
-		delayMicroseconds(_delay);
+      delayMicroseconds(_delay);
 
-		_temp = digitalRead(_dataPin);					// Reads the data pin
-		if (_temp)
-		{
-			_dataIn = _dataIn | (B10000000 >> _i);		// Shifts the read data into _dataIn
-		}
+      for (uint8_t j=0;j<_n_controllers;j++)
+        {
+          dataIn[2*j]= (dataIn[2*j]<<1)| !digitalRead(_dataPin+j); //the pointed mem is actually u16, write only H/L part
+        }
 
-		digitalWrite(_clockPin, HIGH);
-		delayMicroseconds(_delay);
-	}
-	return _dataIn;
+      digitalWrite(_clockPin, HIGH);
+      delayMicroseconds(_delay);
+    }
 }
 
 
-void Psx::setupPins(byte dataPin, byte cmndPin, byte attPin, byte clockPin, byte delay)
+void Psx::setupPins(uint8_t dataPin, uint8_t cmndPin, uint8_t attPin, uint8_t clockPin, uint8_t delay,uint8_t n_controllers)
 {
-	pinMode(dataPin, INPUT);
-	digitalWrite(dataPin, HIGH);	// Turn on internal pull-up
-	_dataPin = dataPin;
 
-	pinMode(cmndPin, OUTPUT);
-	_cmndPin = cmndPin;
+  for (uint8_t i=0; i<n_controllers; ++i){
+    pinMode(dataPin+i, INPUT);
+    digitalWrite(dataPin+i, HIGH);	// Turn on internal pull-up
+  }
+  _dataPin = dataPin;
 
-	pinMode(attPin, OUTPUT);
-	_attPin = attPin;
-	digitalWrite(_attPin, HIGH);
+  pinMode(cmndPin, OUTPUT);
+  _cmndPin = cmndPin;
 
-	pinMode(clockPin, OUTPUT);
-	_clockPin = clockPin;
-	digitalWrite(_clockPin, HIGH);
-	
-	_delay = delay;
+  pinMode(attPin, OUTPUT);
+  _attPin = attPin;
+  digitalWrite(_attPin, HIGH);
+
+  pinMode(clockPin, OUTPUT);
+  _clockPin = clockPin;
+  digitalWrite(_clockPin, HIGH);
+
+  _delay = delay;
+  _n_controllers=n_controllers;
 }
 
 
-unsigned int Psx::read()
+void Psx::read(uint16_t* state)
 {
-	digitalWrite(_attPin, LOW);
+  digitalWrite(_attPin, LOW);
 
-	shift(0x01);
-	shift(0x42);
-	shift(0xFF);
+  uint8_t* lowState=(uint8_t*)state;
 
-	_data1 = ~shift(0xFF);
-	_data2 = ~shift(0xFF);
+  shift(0x01,lowState);
+  shift(0x42,lowState);
+  shift(0xFF,lowState);
 
-	digitalWrite(_attPin, HIGH);
 
-	_dataOut = (_data2 << 8) | _data1;
+  for (uint8_t i=0; i<_n_controllers; ++i)
+    {
+      state[i]=0;
+    }
 
-	return _dataOut;
+  shift(0xFF,lowState);
+  shift(0xFF,lowState+1);
+
+  digitalWrite(_attPin, HIGH);
+
 }
